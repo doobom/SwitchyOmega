@@ -62,6 +62,20 @@ msgstr ""
 "如果域名層數在設定的範圍內則匹配，否則不匹配。<br>域名層數是指 <b>域名共有幾段（以點分隔）</b>.<br>例如: <code>www."
 "example.com</code> 的域名層數為 3，而 <code>internal</code> 的域名層數為 1."
 
+msgid "condition_IpCondition"
+msgstr "IP 地址字面量"
+
+msgid "condition_help_IpCondition"
+msgstr ""
+"當且僅當主機是<b>字面的</b> IP 地址，且地址處於某個子網內時匹配。"
+"子網使用 <a href='"
+"http://www.ibm.com/support/knowledgecenter/zh/SS2MBL_9.0.2/PCAAdmin/PCA/Cfg/CIDRFormat_47.html'"
+">CIDR 格式</a>表示。<br>例如，規則 <code>127.0.0.1/16</code> 會匹配所有類似"
+"<code>127.0.*.*</code> 的地址。<br>"
+"因此地址 <code>127.0.0.1</code> 匹配而地址 <code>127.1.0.0</code> 不匹配。"
+"主機名稱，例如 <code>localhost</code> 不會被此類規則匹配，因為它們<b>不是</b> "
+"IP 地址字面量。"
+
 msgid "condition_UrlWildcardCondition"
 msgstr "網址通配符"
 
@@ -99,6 +113,32 @@ msgid "condition_help_FalseCondition"
 msgstr ""
 "設定規則類型為<code>(禁用)</code>可以臨時禁用某個條件。禁用的條件在匹配時視為不存在。<br>條件被禁用後，仍然儲存有之前的資料（"
 "例如通配符或正則），因此當需要時，可以把條件類型改回之前的類型，以方便地重新啟用條件。"
+
+msgid "condition_TimeCondition"
+msgstr "當前時間"
+
+msgid "condition_help_TimeCondition"
+msgstr ""
+"如果當前本地時間在某個範圍內則匹配。此範圍由<b>開始小時</b>和<b>結束小時</b>"
+"確定，包含開始的那個小時以及結束的那個小時。<br>"
+"本地時間、開始小時和結束小時均按照<b>24小時制</b>計算（從<b>0到23</b>）。<br>"
+"此條件大約在請求發出的瞬間，才計算是否匹配。"
+
+msgid "condition_WeekdayCondition"
+msgstr "每週幾"
+
+msgid "condition_help_WeekdayCondition"
+msgstr ""
+"只在每週的某幾天才匹配。可以在條件詳情中勾選<b>星期幾有效</b>。"
+"根據當地時區來計算現在是星期幾，然後再檢視當天是否選中。<br>"
+"假設在請求傳送時是星期X：如果星期X被勾選，則匹配所有請求。否則不匹配任何請求。<br>"
+"除了日期以外，在匹配過程中不會參考請求的網址或任何其他資訊。"
+
+msgid "condition_alert_fullUrlLimitation"
+msgstr ""
+"Chrome 52 起，<code>https://</code>協議下的完整網址無法正常匹配。"
+"<a href='https://github.com/FelisCatus/SwitchyOmega/wiki/Chromium-%E5%AE%8C%E6%95%B4%E7%BD%91%E5%9D%80%E9%99%90%E5%88%B6'>"
+"更多信息...</a>"
 
 msgid "condition_group_default"
 msgstr " "
@@ -570,6 +610,30 @@ msgstr "默認情景模式"
 msgid "options_hostLevelsBetween"
 msgstr "≤ 主機層數 ≤"
 
+msgid "options_hourBetween"
+msgstr "≤ 當前小時 ≤"
+
+msgid "options_weekDayShort_0"
+msgstr "日"
+
+msgid "options_weekDayShort_1"
+msgstr "一"
+
+msgid "options_weekDayShort_2"
+msgstr "二"
+
+msgid "options_weekDayShort_3"
+msgstr "三"
+
+msgid "options_weekDayShort_4"
+msgstr "四"
+
+msgid "options_weekDayShort_5"
+msgstr "五"
+
+msgid "options_weekDayShort_6"
+msgstr "六"
+
 msgid "options_group_conditionHelp"
 msgstr "條件類型說明"
 
@@ -794,6 +858,21 @@ msgstr "情景模式已經更新成功。"
 msgid "options_profileDownloadError"
 msgstr "下載情景模式資料時出錯！"
 
+msgid "options_profileDownloadError_NetworkError"
+msgstr "更新時發生網絡錯誤。"
+
+msgid "options_profileDownloadError_HttpError"
+msgstr "更新時發生網絡錯誤 (HTTP $STATUS$)."
+
+msgid "options_profileDownloadError_HttpNotFoundError"
+msgstr "在遠程服務器上找不到情景模式網址對應的文件。請檢查網址。"
+
+msgid "options_profileDownloadError_HttpServerError"
+msgstr "更新時遠程服務器發生錯誤 ($STATUS$)。"
+
+msgid "options_profileDownloadError_ContentTypeRejectedError"
+msgstr "下載的數據不符合格式！建議您在瀏覽器中打開情景模式網址並檢查其內容。"
+
 msgid "options_downloadProfileNow"
 msgstr "立即更新情景模式"
 
@@ -978,3 +1057,32 @@ msgstr "檢查此[元素]使用的代理"
 
 msgid "contextMenu_enableQuickSwitch"
 msgstr "啟用快速切換"
+
+msgid "about_title"
+msgstr "關於"
+
+msgid "about_app_description"
+msgstr "一個代理設置工具"
+
+msgid "about_version"
+msgstr "版本 $VERSION$"
+
+msgid "about_disclaimer_networkService"
+msgstr "SwitchyOmega 不提供代理伺服器、VPN等網絡服務。"
+
+msgid "about_disclaimer_privacy"
+msgstr "SwitchyOmega 不會跟蹤您的上網記錄，不在頁面中插入廣告。請參見我們的"
+"<a href='https://github.com/FelisCatus/SwitchyOmega/wiki/Privacy#%E4%B8%AD%E6%96%87'>隱私政策</a>。"
+
+msgid "about_help"
+msgstr "如有其他問題或者需要幫助，請參考"
+"<a href='https://github.com/FelisCatus/SwitchyOmega/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98'>常見問題</a>。"
+
+msgid "about_copyright"
+msgstr "版權所有 2012-2017 <a href='https://github.com/FelisCatus/SwitchyOmega/blob/master/AUTHORS'>The SwitchyOmega Authors</a>. 保留所有權利。"
+
+msgid "about_credits"
+msgstr "SwitchyOmega 的誕生離不開 <a href='https://github.com/FelisCatus/SwitchyOmega'>SwitchyOmega</a> 開源項目和其他<a href='https://github.com/FelisCatus/SwitchyOmega/blob/master/AUTHORS'>開源軟體</a>。"
+
+msgid "about_license"
+msgstr "SwitchyOmega 是<a href='https://www.gnu.org/philosophy/free-sw.zh-tw.html'>自由軟體</a>，使用<a href='https://www.gnu.org/licenses/gpl.html'>GNU General Public License</a> 版本 3 及以上授權。"

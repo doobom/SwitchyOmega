@@ -7,6 +7,7 @@
     "chai": "~1.9.1",
     "coffee-script": "^1.7.1",
     "coffeeify": "^0.7.0",
+    "coffeelint": "^1.16.0",
     "grunt": "^0.4.5",
     "grunt-browserify": "^3.0.0",
     "grunt-coffeelint": "^0.0.13",
@@ -14,6 +15,7 @@
     "grunt-contrib-watch": "^0.6.1",
     "grunt-mocha-test": "~0.11.0",
     "load-grunt-config": "^0.13.1",
+    "lolex": "^1.4.0",
     "minifyify": "^4.1.1"
   },
   "dependencies": {
@@ -26,6 +28,7 @@
     "uglify-js-real": "./uglifyjs.js"
   },
   "scripts": {
-    "dev": "npm link"
+    "dev": "npm link",
+    "test": "TZ=Europe/London grunt test"
   }
 }

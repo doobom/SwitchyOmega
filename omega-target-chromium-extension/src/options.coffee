@@ -1,8 +1,6 @@
 OcontextMenu_inspectElementmegaTarget = require('omega-target')
 OmegaPac = OmegaTarget.OmegaPac
 Promise = OmegaTarget.Promise
-xhr = Promise.promisify(require('xhr'))
-Url = require('url')
 querystring = require('querystring')
 chromeApiPromisifyAll = require('./chrome_api')
 proxySettings = chromeApiPromisifyAll(chrome.proxy.settings)
@@ -10,19 +8,15 @@ parseExternalProfile = require('./parse_external_profile')
 ProxyAuth = require('./proxy_auth')
 WebRequestMonitor = require('./web_request_monitor')
 ChromePort = require('./chrome_port')
+fetchUrl = require('./fetch_url')
+Url = require('url')
 
 class ChromeOptions extends OmegaTarget.Options
   _inspect: null
   parseExternalProfile: (details) ->
     parseExternalProfile(details, @_options, @_fixedProfileConfig.bind(this))
 
-  fetchUrl: (dest_url, opt_bypass_cache) ->
-    if opt_bypass_cache
-      parsed = Url.parse(dest_url, true)
-      parsed.search = undefined
-      parsed.query['_'] = Date.now()
-      dest_url = Url.format(parsed)
-    xhr(dest_url).get(1)
+  fetchUrl: fetchUrl
 
   updateProfile: (args...) ->
     super(args...).then (results) ->
@@ -80,6 +74,10 @@ class ChromeOptions extends OmegaTarget.Options
       chrome.browserAction.setBadgeText(text: '')
     return
 
+  _formatBypassItem: (condition) ->
+    str = OmegaPac.Conditions.str(condition)
+    i = str.indexOf(' ')
+    return str.substr(i + 1)
   _fixedProfileConfig: (profile) ->
     config = {}
     config['mode'] = 'fixed_servers'
@@ -107,12 +105,8 @@ class ChromeOptions extends OmegaTarget.Options
 
     if config['mode'] != 'direct'
       rules['bypassList'] = bypassList = []
-      for rule in profile.bypassList
-        if rule.pattern == '<local>'
-          for host in OmegaPac.Conditions.localHosts
-            bypassList.push(host)
-        else
-          bypassList.push(rule.pattern)
+      for condition in profile.bypassList
+        bypassList.push(@_formatBypassItem(condition))
       config['rules'] = rules
     return config
 
@@ -203,7 +197,7 @@ class ChromeOptions extends OmegaTarget.Options
               if tab.url and tab.url.indexOf('chrome') != 0
                 chrome.tabs.reload(tab.id)
     else
-      chrome.browserAction.setPopup({popup: 'popup.html'})
+      chrome.browserAction.setPopup({popup: 'popup/index.html'})
     Promise.resolve()
 
   setInspect: (settings) ->
@@ -335,6 +329,8 @@ class ChromeOptions extends OmegaTarget.Options
     chrome.tabs.create url: chrome.extension.getURL('options.html')
 
   getPageInfo: ({tabId, url}) ->
+    errorCount = @_requestMonitor?.tabInfo[tabId]?.errorCount
+    result = if errorCount then {errorCount: errorCount} else null
     getBadge = new Promise (resolve, reject) ->
       chrome.browserAction.getBadgeText {tabId: tabId}, (result) ->
         resolve(result)
@@ -345,19 +341,21 @@ class ChromeOptions extends OmegaTarget.Options
         url = inspectUrl
       else
         @clearBadge()
-      return null if not url
+      return result if not url
       if url.substr(0, 6) == 'chrome'
         errorPagePrefix = 'chrome://errorpage/'
         if url.substr(0, errorPagePrefix.length) == errorPagePrefix
           url = querystring.parse(url.substr(url.indexOf('?') + 1)).lasturl
-          return null if not url
+          return result if not url
         else
-          return null
+          return result
       domain = OmegaPac.getBaseDomain(Url.parse(url).hostname)
+
       return {
         url: url
         domain: domain
         tempRuleProfileName: @queryTempRule(domain)
+        errorCount: errorCount
       }
 
 module.exports = ChromeOptions

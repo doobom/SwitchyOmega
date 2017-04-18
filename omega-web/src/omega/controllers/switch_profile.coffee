@@ -5,7 +5,10 @@ angular.module('omega').controller 'SwitchProfileCtrl', ($scope, $rootScope,
   $scope.ruleListFormats = OmegaPac.Profiles.ruleListFormats
 
   exportRuleList = ->
-    text = OmegaPac.RuleList.Switchy.compose($scope.profile)
+    text = OmegaPac.RuleList.Switchy.compose(
+      rules: $scope.profile.rules
+      defaultProfileName: $scope.attachedOptions.defaultProfileName
+    )
 
     eol = '\r\n'
     info = '\n'
@@ -74,6 +77,7 @@ angular.module('omega').controller 'SwitchProfileCtrl', ($scope, $rootScope,
         'HostWildcardCondition'
         'HostRegexCondition'
         'HostLevelsCondition'
+        'IpCondition'
       ]
     }
     {
@@ -87,6 +91,8 @@ angular.module('omega').controller 'SwitchProfileCtrl', ($scope, $rootScope,
     {
       group: 'special'
       types: [
+        'WeekdayCondition'
+        'TimeCondition'
         'FalseCondition'
       ]
     }
@@ -110,9 +116,21 @@ angular.module('omega').controller 'SwitchProfileCtrl', ($scope, $rootScope,
 
   $scope.showConditionTypes = 0
   $scope.hasConditionTypes = 0
+  $scope.hasUrlConditions = false
+  $scope.isUrlConditionType =
+    'UrlWildcardCondition': true
+    'UrlRegexCondition': true
+
   updateHasConditionTypes = ->
-    return unless $scope.hasConditionTypes == 0
     return unless $scope.profile?.rules?
+
+    $scope.hasUrlConditions = false
+    for rule in $scope.profile.rules
+      if $scope.isUrlConditionType[rule.condition.conditionType]
+        $scope.hasUrlConditions = true
+        break
+
+    return unless $scope.hasConditionTypes == 0
     for rule in $scope.profile.rules
       # Convert TrueCondition to a HostWildcardCondition with pattern '*'.
       if rule.condition.conditionType == 'TrueCondition'
@@ -187,6 +205,20 @@ angular.module('omega').controller 'SwitchProfileCtrl', ($scope, $rootScope,
       pattern = condition.pattern
       return pattern.indexOf(':') >= 0 || pattern.indexOf('/') >= 0
     return false
+
+  $scope.validateIpCondition = (condition, input) ->
+    return false unless input
+    ip = OmegaPac.Conditions.parseIp(input)
+    return ip?
+
+  $scope.getWeekdayList = OmegaPac.Conditions.getWeekdayList
+  $scope.updateDay = (condition, i, selected) ->
+    condition.days ||= '-------'
+    char = if selected then 'SMTWtFs'[i] else '-'
+    condition.days = condition.days.substr(0, i) + char +
+      condition.days.substr(i + 1)
+    delete condition.startDay
+    delete condition.endDay
 
   $scope.removeRule = (index) ->
     removeForReal = ->
@@ -381,6 +413,11 @@ angular.module('omega').controller 'SwitchProfileCtrl', ($scope, $rootScope,
       $scope.loadRules = true
     omegaTarget.state(stateEditorKey, {editSource: $scope.editSource})
 
+  $rootScope.$on '$stateChangeStart', (event, _, __, fromState) ->
+    if $scope.editSource and $scope.source.touched
+      sourceValid = parseSource()
+      event.preventDefault() unless sourceValid
+
   $scope.$on 'omegaApplyOptions', (event) ->
     if $scope.attached?.ruleList and not $scope.attached.sourceUrl
       $scope.attachedRuleListError = undefined
@@ -408,5 +445,6 @@ angular.module('omega').controller 'SwitchProfileCtrl', ($scope, $rootScope,
       getState = omegaTarget.state(['web.switchGuide', 'firstRun'])
       $q.all([rulesReady, getState]).then ([_, [switchGuide, firstRun]]) ->
         return if firstRun or switchGuide == 'shown'
-        $script 'js/switch_profile_guide.js'
         omegaTarget.state('web.switchGuide', 'shown')
+        return if $scope.profile.rules.length == 0
+        $script 'js/switch_profile_guide.js'

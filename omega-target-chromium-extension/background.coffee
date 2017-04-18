@@ -28,21 +28,32 @@ Promise.onUnhandledRejectionHandled (promise) ->
   unhandledPromisesId.splice(index, 1)
 
 iconCache = {}
+drawContext = null
+drawError = null
 drawIcon = (resultColor, profileColor) ->
   cacheKey = "omega+#{resultColor ? ''}+#{profileColor}"
   icon = iconCache[cacheKey]
   return icon if icon
-  ctx = document.getElementById('canvas-icon').getContext('2d')
-  ctx2x = document.getElementById('canvas-icon-2x').getContext('2d')
-  if resultColor?
-    drawOmega ctx, resultColor, profileColor
-    drawOmega2x ctx2x, resultColor, profileColor
-  else
-    drawOmega ctx, profileColor
-    drawOmega2x ctx2x, profileColor
-  icon =
-    19: ctx.getImageData(0, 0, 19, 19)
-    38: ctx2x.getImageData(0, 0, 38, 38)
+  try
+    if not drawContext?
+      drawContext = document.getElementById('canvas-icon').getContext('2d')
+
+    icon = {}
+    for size in [16, 19, 24, 32, 38]
+      drawContext.scale(size, size)
+      drawContext.clearRect(0, 0, 1, 1)
+      if resultColor?
+        drawOmega drawContext, resultColor, profileColor
+      else
+        drawOmega drawContext, profileColor
+      drawContext.setTransform(1, 0, 0, 1, 0, 0)
+      icon[size] = drawContext.getImageData(0, 0, size, size)
+  catch e
+    if not drawError?
+      drawError = e
+      Log.error(e)
+    icon = null
+
   return iconCache[cacheKey] = icon
 
 charCodeUnderscore = '_'.charCodeAt(0)
@@ -65,6 +76,8 @@ actionForUrl = (url) ->
     details = ''
     direct = false
     attached = false
+    condition2Str = (condition) ->
+      condition.pattern || OmegaPac.Conditions.str(condition)
     for result in results
       if Array.isArray(result)
         if not result[1]?
@@ -87,7 +100,7 @@ actionForUrl = (url) ->
         else if typeof result[1] == 'string'
           details += "#{result[1]} => #{result[0]}\n"
         else
-          condition = (result[1].condition ? result[1]).pattern ? ''
+          condition = condition2Str(result[1].condition ? result[1])
           details += "#{condition} => "
           if result[0] == 'DIRECT'
             details += chrome.i18n.getMessage('browserAction_directResult')
@@ -101,8 +114,7 @@ actionForUrl = (url) ->
         else if attached
           details += chrome.i18n.getMessage('browserAction_attachedPrefix')
           attached = false
-        condition = (result.source ? result.condition.pattern ?
-          result.condition.conditionType)
+        condition = result.source ? condition2Str(result.condition)
         details += "#{condition} => #{dispName(result.profileName)}\n"
 
     if not details
@@ -273,6 +285,12 @@ encodeError = (obj) ->
   else
     obj
 
+refreshActivePageIfEnabled = ->
+  return if localStorage['omega.local.refreshOnProfileChange'] == 'false'
+  chrome.tabs.query {active: true, lastFocusedWindow: true}, (tabs) ->
+    if tabs[0].url and tabs[0].url.substr(0, 6) != 'chrome'
+      chrome.tabs.reload(tabs[0].id, {bypassCache: true})
+
 chrome.runtime.onMessage.addListener (request, sender, respond) ->
   options.ready.then ->
     target = options
@@ -286,6 +304,8 @@ chrome.runtime.onMessage.addListener (request, sender, respond) ->
       return
 
     promise = Promise.resolve().then -> method.apply(target, request.args)
+    if request.refreshActivePage
+      promise.then refreshActivePageIfEnabled
     return if request.noReply
 
     promise.then (result) ->

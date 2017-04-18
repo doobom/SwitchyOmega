@@ -3,8 +3,8 @@ msgstr ""
 "Project-Id-Version: SwitchyOmega 2.3.3\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2015-02-13 10:29+0000\n"
-"PO-Revision-Date: 2015-06-17 13:04+0200\n"
-"Last-Translator: Masoud <mrem71@gmail.com>\n"
+"PO-Revision-Date: 2016-08-21 08:55+0000\n"
+"Last-Translator: ReZa ZaRe <rz.zare@gmail.com>\n"
 "Language-Team: Persian "
 "<https://hosted.weblate.org/projects/switchyomega/main/fa/>\n"
 "Language: fa\n"
@@ -12,7 +12,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 2.4-dev\n"
+"X-Generator: Weblate 2.8-dev\n"
 
 msgid "appNameShort"
 msgstr "SwitchyOmega"
@@ -72,6 +72,20 @@ msgstr ""
 "دارای سطح میزابن سه میباشد ، در حالی که <code>داخل</code> سطح میزبان یک را "
 "دارد."
 
+msgid "condition_IpCondition"
+msgstr "IP Literals"
+
+msgid "condition_help_IpCondition"
+msgstr ""
+"Matches the request if and only if the host is a <b>literal</b> IP address and"
+" in the subnet as specified by <a href='"
+"https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation'>"
+"CIDR notation</a>.<br>For example, given the rule <code>127.0.0.1/16</code>, "
+"it matches all IP addresses like <code>127.0.*.*</code>.<br>"
+"So <code>127.0.0.1</code> matches while <code>127.1.0.0</code> does not. "
+"Host names like <code>localhost</code> will never match because they are "
+"<b>not</b> IP literals."
+
 msgid "condition_UrlWildcardCondition"
 msgstr "فرانویسه ادرس (URL)"
 
@@ -120,6 +134,36 @@ msgstr ""
 "این قابلیت برای غیرفعال کردن موقت شرط استفاده نمایید .<br> شروط غیرفعال "
 "تمامی تنظیمات خود را حفظ میکنند و در صورت نیاز میتوانید با برگردان نوع آن به "
 "حالت قبلی آن را فعال کنید ."
+
+#, fuzzy
+msgid "condition_TimeCondition"
+msgstr "زمان فعلی"
+
+msgid "condition_help_TimeCondition"
+msgstr ""
+"Matches if the current local time is in the range defined by "
+"<b>starting hour</b> and <b>ending hour</b>, both inclusive.<br>"
+"Local time, starting hour and ending hour are all calculated in "
+"<b>24-hour</b> format (from <b>0 to 23</b>). <br>"
+"The calculation happens roughly at the moment when the request is sent."
+
+#, fuzzy
+msgid "condition_WeekdayCondition"
+msgstr "روز هفته"
+
+msgid "condition_help_WeekdayCondition"
+msgstr ""
+"Matches if the <b>current day of week</b> is selected in condition details. "
+"Day is calculated according to local timezone.<br>"
+"The request and its URL don't matter to this condition. "
+"The result is solely based on the day of the week when the request is sent."
+
+msgid "condition_alert_fullUrlLimitation"
+msgstr ""
+"Full URL matching is no longer possible for <code>https://</code> "
+"URLs as of Chrome 52. "
+"<a href='https://github.com/FelisCatus/SwitchyOmega/wiki/Chromium-Full-URL-Limitation'>"
+"Learn more...</a>"
 
 msgid "condition_group_default"
 msgstr " "
@@ -653,6 +697,30 @@ msgstr "پیش فرض"
 msgid "options_hostLevelsBetween"
 msgstr "≤ سطوح میزبان ≤"
 
+msgid "options_hourBetween"
+msgstr "≤ current hour ≤"
+
+msgid "options_weekDayShort_0"
+msgstr "Su"
+
+msgid "options_weekDayShort_1"
+msgstr "Mo"
+
+msgid "options_weekDayShort_2"
+msgstr "Tu"
+
+msgid "options_weekDayShort_3"
+msgstr "We"
+
+msgid "options_weekDayShort_4"
+msgstr "Th"
+
+msgid "options_weekDayShort_5"
+msgstr "Fr"
+
+msgid "options_weekDayShort_6"
+msgstr "Sa"
+
 msgid "options_group_conditionHelp"
 msgstr "درباره ی انوع شروط"
 
@@ -901,6 +969,22 @@ msgstr "پروفایل با موفقیت بروزسانی شد ."
 msgid "options_profileDownloadError"
 msgstr "خطا در حین دانلود داده ی پروفایل !"
 
+msgid "options_profileDownloadError_NetworkError"
+msgstr "A network error occurred when updating."
+
+msgid "options_profileDownloadError_HttpError"
+msgstr "An HTTP error ($STATUS$) occurred when updating."
+
+msgid "options_profileDownloadError_HttpNotFoundError"
+msgstr "The Profile URL was not found on the server. Please double-check."
+
+msgid "options_profileDownloadError_HttpServerError"
+msgstr "The remote server responded with error ($STATUS$) when updating."
+
+msgid "options_profileDownloadError_ContentTypeRejectedError"
+msgstr "The downloaded data is invalid! "
+"You may open the Profile URL in your browser to inspect it."
+
 msgid "options_downloadProfileNow"
 msgstr "هم اکنون پروفایل را دانلود کنید"
 
@@ -1124,3 +1208,32 @@ msgstr "بررسی پروکسی مورد استفاده برای این الما
 
 msgid "contextMenu_enableQuickSwitch"
 msgstr "فعال سازی تغییر سرعتی"
+
+msgid "about_title"
+msgstr "About"
+
+msgid "about_app_description"
+msgstr "A proxy configuration tool"
+
+msgid "about_version"
+msgstr "Version $VERSION$"
+
+msgid "about_disclaimer_networkService"
+msgstr "SwitchyOmega does not provide proxies, VPNs, or other network services."
+
+msgid "about_disclaimer_privacy"
+msgstr "SwitchyOmega does not track you or insert ads into webpages. Please see"
+" our <a href='https://github.com/FelisCatus/SwitchyOmega/wiki/Privacy#english'>privacy policy</a>."
+
+msgid "about_help"
+msgstr "Other questions? Need help with using SwitchyOmega? Please see our "
+"<a href='https://github.com/FelisCatus/SwitchyOmega/wiki/FAQ'>FAQ</a>."
+
+msgid "about_copyright"
+msgstr "Copyright 2012-2017 <a href='https://github.com/FelisCatus/SwitchyOmega/blob/master/AUTHORS'>The SwitchyOmega Authors</a>. All rights reserved."
+
+msgid "about_credits"
+msgstr "SwitchyOmega is made possible by the <a href='https://github.com/FelisCatus/SwitchyOmega'>SwitchyOmega</a> open source project and other <a href='https://github.com/FelisCatus/SwitchyOmega/blob/master/AUTHORS'>open source software</a>."
+
+msgid "about_license"
+msgstr "SwitchyOmega is <a href='https://www.gnu.org/philosophy/free-sw.en.html'>free software</a> licensed under <a href='https://www.gnu.org/licenses/gpl.html'>GNU General Public License</a> Version 3 or later."

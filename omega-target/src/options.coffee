@@ -123,16 +123,19 @@ class Options
             'web.switchGuide': 'showOnFirstUse'
           }).then (items) => @_state.set(items)
           return null unless @sync?
-          # Try to fetch options from sync storage.
-          return @sync.storage.get(null).then (options) =>
-            if not options['schemaVersion']
-              @_state.set({'syncOptions': 'pristine'})
-              return null
-            else
-              @_state.set({'syncOptions': 'sync'})
-              @sync.enabled = true
-              @log.log('Options#loadOptions::fromSync', options)
-              options
+          @_state.get({'syncOptions': ''}).then ({syncOptions}) =>
+            return if syncOptions == 'conflict'
+            # Try to fetch options from sync storage.
+            return @sync.storage.get(null).then((options) =>
+              if not options['schemaVersion']
+                @_state.set({'syncOptions': 'pristine'})
+                return null
+              else
+                @_state.set({'syncOptions': 'sync'})
+                @sync.enabled = true
+                @log.log('Options#loadOptions::fromSync', options)
+                options
+            ).catch(-> null)
         else
           @log.error(e.stack)
           # Some serious error happened when loading options. Disable syncing
@@ -260,7 +263,7 @@ class Options
   ###
   reset: (options) ->
     @log.method('Options#reset', this, arguments)
-    options ?= getDefaultOptions()
+    options ?= @getDefaultOptions()
     @upgrade(@parseOptions(options)).then ([opt]) =>
       # Disable syncing when resetting to avoid affecting sync storage.
       @sync.enabled = false if @sync?
@@ -642,7 +645,9 @@ class Options
           return unless profile.name == name
       url = OmegaPac.Profiles.updateUrl(profile)
       if url
-        results[key] = @fetchUrl(url, opt_bypass_cache).then((data) =>
+        type_hints = OmegaPac.Profiles.updateContentTypeHints(profile)
+        fetchResult = @fetchUrl(url, opt_bypass_cache, type_hints)
+        results[key] = fetchResult.then((data) =>
           # Errors and unsuccessful response codes shoud have been already
           # rejected by fetchUrl and will not end up here.
           # So empty data indicates success without any update (e.g. 304).
@@ -666,9 +671,10 @@ class Options
   # In base class, this method is not implemented and will always reject.
   # @param {string} url The name of the profiles,
   # @param {?bool} opt_bypass_cache Do not read from the cache if true
+  # @param {?string} opt_type_hints MIME type hints for downloaded content.
   # @returns {Promise<String>} The text content fetched from the url
   ###
-  fetchUrl: (url, opt_bypass_cache) ->
+  fetchUrl: (url, opt_bypass_cache, opt_type_hints) ->
     Promise.reject new Error('not implemented')
 
   _replaceRefChanges: (fromName, toName, changes) ->

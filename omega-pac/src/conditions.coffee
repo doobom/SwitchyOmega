@@ -84,7 +84,7 @@ module.exports = exports =
     return exports._abbrs[abbr.toUpperCase()]
 
   comment: (comment, node) ->
-    return unless comment
+    return node unless comment
     node.start ?= {}
     # This hack is needed to allow dumping comments in repeated print call.
     Object.defineProperty node.start, '_comments_dumped',
@@ -123,8 +123,10 @@ module.exports = exports =
       return exports.comment comment, new U2.AST_Binary(
         left: val
         operator: '==='
-        right: new U2.AST_Number value: min
+        right: min
       )
+    if min > max
+      return exports.comment comment, new U2.AST_False
     if exports.isInt(min) and exports.isInt(max) and max - min < 32
       comment ||= "#{min} <= value && value <= #{max}"
       tmpl = "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -194,6 +196,12 @@ module.exports = exports =
   ipv6Max: new IP.v6.Address('::/0').endAddress().canonicalForm()
 
   localHosts: ["127.0.0.1", "[::1]", "localhost"]
+
+  getWeekdayList: (condition) ->
+    if condition.days
+      condition.days.charCodeAt(i) > 64 for i in [0...7]
+    else
+      condition.startDay <= i <= condition.endDay for i in [0...7]
 
   _condCache: new AttachedCache (condition) ->
     tag = exports._handler(condition.conditionType).tag
@@ -298,6 +306,7 @@ module.exports = exports =
           ip: null
           scheme: null
           url: null
+          normalizedPattern: ''
         server = condition.pattern
         if server == '<local>'
           cache.host = server
@@ -305,6 +314,7 @@ module.exports = exports =
         parts = server.split '://'
         if parts.length > 1
           cache.scheme = parts[0]
+          cache.normalizedPattern = cache.scheme + '://'
           server = parts[1]
 
         parts = server.split '/'
@@ -314,36 +324,43 @@ module.exports = exports =
           if addr and not isNaN(prefixLen)
             cache.ip =
               conditionType: 'IpCondition'
-              ip: parts[0]
+              ip: @normalizeIp addr
               prefixLength: prefixLen
+            cache.normalizedPattern += cache.ip.ip + '/' + cache.ip.prefixLength
             return cache
-        if server.charCodeAt(server.length - 1) != ']'.charCodeAt(0)
+        # The server can be an IP address with or without brackets.
+        serverIp = @parseIp(server)
+        if not serverIp?
           pos = server.lastIndexOf(':')
           if pos >= 0
             matchPort = server.substring(pos + 1)
             server = server.substring(0, pos)
-        serverIp = @parseIp server
-        serverRegex = null
+          serverIp = @parseIp server
         if serverIp?
-          if serverIp.regularExpressionString?
-            regexStr = serverIp.regularExpressionString(true)
-            serverRegex = '\\[' + regexStr + '\\]'
+          server = @normalizeIp serverIp
+          if serverIp.v4
+            cache.normalizedPattern += server
           else
-            server = @normalizeIp serverIp
-        else if server.charCodeAt(0) == '.'.charCodeAt(0)
-          server = '*' + server
+            cache.normalizedPattern += '[' + server + ']'
+        else
+          if server.charCodeAt(0) == '.'.charCodeAt(0)
+            server = '*' + server
+          cache.normalizedPattern = server
+
         if matchPort
-          if not serverRegex?
-            serverRegex = shExp2RegExp(server)
-            serverRegex = serverRegex.substring(1, serverRegex.length - 1)
+          cache.port = matchPort
+          cache.normalizedPattern += ':' + cache.port
+          # In URL, IPv6 server addresses need to be bracketed.
+          if serverIp? and not serverIp.v4
+            server = '[' + server + ']'
+          serverRegex = shExp2RegExp(server)
+          serverRegex = serverRegex.substring(1, serverRegex.length - 1)
           scheme = cache.scheme ? '[^:]+'
           cache.url = @safeRegex('^' + scheme + ':\\/\\/' + serverRegex +
             ':' + matchPort + '\\/')
         else if server != '*'
-          if serverRegex
-            serverRegex = '^' + serverRegex + '$'
-          else
-            serverRegex = shExp2RegExp server, trimAsterisk: true
+          # In host, IPv6 server addresses are never bracketed.
+          serverRegex = shExp2RegExp server, trimAsterisk: true
           cache.host = @safeRegex(serverRegex)
         return cache
       match: (condition, request, cache) ->
@@ -352,11 +369,27 @@ module.exports = exports =
         return false if cache.ip? and not @match cache.ip, request
         if cache.host?
           if cache.host == '<local>'
-            return request.host in @localHosts
+            # https://code.google.com/p/chromium/codesearch#chromium/src/net/proxy/proxy_bypass_rules.cc&sq=package:chromium&l=67
+            # We align with Chromium's behavior of bypassing 127.0.0.1, ::1 as
+            # well as any host without dots.
+            #
+            # This, however, will match IPv6 literals who also don't have dots.
+            return (
+              request.host == '127.0.0.1' or
+              request.host == '::1' or
+              request.host.indexOf('.') < 0
+            )
           else
             return false if not cache.host.test(request.host)
         return false if cache.url? and !cache.url.test(request.url)
         return true
+      str: (condition) ->
+        analyze = @_handler(condition).analyze
+        cache = analyze.call(exports, condition)
+        if cache.normalizedPattern
+          return cache.normalizedPattern
+        else
+          return condition.pattern
       compile: (condition, cache) ->
         cache = cache.analyzed
         if cache.url?
@@ -370,12 +403,22 @@ module.exports = exports =
           )
           return new U2.AST_Binary(
             left: new U2.AST_Binary(
-              left: hostEquals '[::1]'
+              left: hostEquals '127.0.0.1'
               operator: '||'
-              right: hostEquals 'localhost'
+              right: hostEquals '::1'
             )
             operator: '||'
-            right: hostEquals '127.0.0.1'
+            right: new U2.AST_Binary(
+              left: new U2.AST_Call(
+                expression: new U2.AST_Dot(
+                  expression: new U2.AST_SymbolRef name: 'host'
+                  property: 'indexOf'
+                )
+                args: [new U2.AST_String value: '.']
+              )
+              operator: '<'
+              right: new U2.AST_Number value: 0
+            )
           )
         if cache.scheme?
           conditions.push new U2.AST_Binary(
@@ -493,13 +536,15 @@ module.exports = exports =
             new U2.AST_String value: cache.mask
           ]
         )
-        if cache.addr.v6
+        if not cache.addr.v4
+          # Example: isInNetEx(host,"fefe:13::abc/33")
+          # For documentation on the isInNetEx function, see:
+          # https://msdn.microsoft.com/en-us/library/windows/desktop/gg308479(v=vs.85).aspx
           hostIsInNetEx = new U2.AST_Call(
             expression: new U2.AST_SymbolRef name: 'isInNetEx'
             args: [
               new U2.AST_SymbolRef name: 'host'
-              new U2.AST_String value: cache.normalized
-              new U2.AST_String value: cache.mask
+              new U2.AST_String value: cache.normalized + cache.addr.subnet
             ]
           )
           # Use isInNetEx if possible.
@@ -522,9 +567,13 @@ module.exports = exports =
         )
       str: (condition) -> condition.ip + '/' + condition.prefixLength
       fromStr: (str, condition) ->
-        [ip, prefixLength] = str.split('/')
-        condition.ip = ip
-        condition.prefixLength = parseInt(prefixLength)
+        addr = @parseIp str
+        if addr?
+          condition.ip = addr.addressMinusSuffix
+          condition.prefixLength = addr.subnetMask
+        else
+          condition.ip = '0.0.0.0'
+          condition.prefixLength = 0
         condition
 
     'HostLevelsCondition':
@@ -555,8 +604,10 @@ module.exports = exports =
       str: (condition) -> condition.minValue + '~' + condition.maxValue
       fromStr: (str, condition) ->
         [minValue, maxValue] = str.split('~')
-        condition.minValue = minValue
-        condition.maxValue = maxValue
+        condition.minValue = parseInt(minValue, 10)
+        condition.maxValue = parseInt(maxValue, 10)
+        condition.minValue = 1 unless condition.minValue > 0
+        condition.maxValue = 1 unless condition.maxValue > 0
         condition
 
     'WeekdayCondition':
@@ -564,9 +615,10 @@ module.exports = exports =
       analyze: (condition) -> null
       match: (condition, request) ->
         day = new Date().getDay()
+        return condition.days.charCodeAt(day) > 64 if condition.days
         return condition.startDay <= day and day <= condition.endDay
       compile: (condition) ->
-        val = new U2.AST_Call(
+        getDay = new U2.AST_Call(
           args: []
           expression: new U2.AST_Dot(
             property: 'getDay'
@@ -576,13 +628,36 @@ module.exports = exports =
             )
           )
         )
-        @between val, condition.startDay, condition.endDay
-      str: (condition) -> condition.startDay + '~' + condition.endDay
+        if condition.days
+          new U2.AST_Binary(
+            left: new U2.AST_Call(
+              expression: new U2.AST_Dot(
+                expression: new U2.AST_String value: condition.days
+                property: 'charCodeAt'
+              )
+              args: [getDay]
+            )
+            operator: '>'
+            right: new U2.AST_Number value: 64
+          )
+        else
+          @between getDay, condition.startDay, condition.endDay
+      str: (condition) ->
+        if condition.days
+          condition.days
+        else
+          condition.startDay + '~' + condition.endDay
       fromStr: (str, condition) ->
-        [startDay, endDay] = str.split('~')
-        condition.startDay = startDay
-        condition.endDay = endDay
+        if str.indexOf('~') < 0 and str.length == 7
+          condition.days = str
+        else
+          [startDay, endDay] = str.split('~')
+          condition.startDay = parseInt(startDay, 10)
+          condition.endDay = parseInt(endDay, 10)
+          condition.startDay = 0 unless 0 <= condition.startDay <= 6
+          condition.endDay = 0 unless 0 <= condition.endDay <= 6
         condition
+
     'TimeCondition':
       abbrs: ['T', 'Time', 'Hour']
       analyze: (condition) -> null
@@ -604,7 +679,9 @@ module.exports = exports =
       str: (condition) -> condition.startHour + '~' + condition.endHour
       fromStr: (str, condition) ->
         [startHour, endHour] = str.split('~')
-        condition.startHour = startHour
-        condition.endHour = endHour
+        condition.startHour = parseInt(startHour, 10)
+        condition.endHour = parseInt(endHour, 10)
+        condition.startHour = 0 unless 0 <= condition.startHour < 24
+        condition.endHour = 0 unless 0 <= condition.endHour < 24
         condition
     # coffeelint: enable=missing_fat_arrows
